@@ -1,0 +1,14 @@
+{
+  "frameworks": {
+    "nist_csf": {
+      "statuses": {
+        "GV.OV-01 Governance strategy defined": "implemented",
+        "ID.AM-01 Asset inventory maintained": "partial",
+        "PR.AA-01 Identity and access managed": "missing"
+      }
+    },
+    "iso27001": { "statuses": {} },
+    "soc2": { "statuses": {} },
+    "cis_v8": { "statuses": {} }
+  }
+}

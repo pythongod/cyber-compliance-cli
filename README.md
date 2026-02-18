@@ -70,3 +70,12 @@ Status values: `implemented`, `partial`, `missing`.
 ## License
 
 MIT
+
+
+## Quick dev
+
+```bash
+cp assessment.sample.json assessment.json
+make setup
+make test
+```
