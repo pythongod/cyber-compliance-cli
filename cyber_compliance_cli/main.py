@@ -1,44 +1,65 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
 from .tui import CyberComplianceApp
 
 app = typer.Typer(help="Cyber security compliance CLI")
 console = Console()
 
-FRAMEWORK_ITEMS = {
-    "nist_csf": ["Govern", "Identify", "Protect", "Detect", "Respond", "Recover"],
-    "iso27001": ["Policies", "Asset Mgmt", "Access Control", "Ops Security", "IR", "BCP"],
-    "soc2": ["Security", "Availability", "Confidentiality", "Processing Integrity", "Privacy"],
-    "cis_v8": ["Assets", "Software", "Data", "Config", "Accounts", "Logging"],
-}
+
+@app.command()
+def dashboard(
+    assessment_file: str = typer.Option(
+        "assessment.json",
+        help="Path to assessment JSON (statuses per control).",
+    ),
+    org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
+) -> None:
+    """Launch beautiful TUI dashboard using live data from cyber-compliance-mcp."""
+    try:
+        data = summarize_all(assessment_file, org_type=org_type)
+    except MCPUnavailableError as exc:
+        console.print(f"[red]MCP unavailable:[/red] {exc}")
+        raise typer.Exit(code=2)
+
+    CyberComplianceApp(data).run()
 
 
 @app.command()
-def dashboard() -> None:
-    """Launch beautiful TUI dashboard."""
-    CyberComplianceApp().run()
+def checklist(
+    framework: str = typer.Option(..., help="Framework: nist_csf|iso27001|soc2|cis_v8"),
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+    org_type: str = typer.Option("saas", help="Organization type."),
+) -> None:
+    """Print control checklist summary via MCP logic."""
+    try:
+        assessment = load_assessment(assessment_file)
+        summary = summarize_framework(framework.lower().strip(), assessment, org_type)
+    except MCPUnavailableError as exc:
+        console.print(f"[red]MCP unavailable:[/red] {exc}")
+        raise typer.Exit(code=2)
 
-
-@app.command()
-def checklist(framework: str = typer.Option(..., help="Framework: nist_csf|iso27001|soc2|cis_v8")) -> None:
-    """Print control checklist for a framework."""
-    key = framework.lower().strip()
-    items = FRAMEWORK_ITEMS.get(key)
-    if not items:
-        console.print(f"[red]Unsupported framework:[/red] {framework}")
+    if summary.get("error"):
+        console.print(f"[red]{summary['error']}[/red]")
         raise typer.Exit(code=1)
 
-    table = Table(title=f"{key.upper()} Checklist")
-    table.add_column("#", justify="right")
-    table.add_column("Control Area")
-    table.add_column("Status")
+    table = Table(title=f"{framework.upper()} Compliance Summary")
+    table.add_column("Metric")
+    table.add_column("Value")
 
-    for idx, item in enumerate(items, start=1):
-        table.add_row(str(idx), item, "not_started")
+    table.add_row("Risk score", f"{summary.get('risk_score')}%")
+    table.add_row("Risk level", str(summary.get("risk_level", "")).upper())
+    table.add_row("Implemented", str(summary.get("implemented", 0)))
+    table.add_row("Partial", str(summary.get("partial", 0)))
+    table.add_row("Missing", str(summary.get("missing", 0)))
+    table.add_row("Controls total", str(summary.get("controls_total", 0)))
 
     console.print(table)
 
@@ -50,7 +71,7 @@ def score(
     partial: int = typer.Option(0, min=0),
     missing: int = typer.Option(0, min=0),
 ) -> None:
-    """Calculate and print a weighted risk score."""
+    """Calculate and print a weighted risk score (manual mode)."""
     total = implemented + partial + missing
     if total == 0:
         console.print("[yellow]No controls provided.[/yellow]")
@@ -73,6 +94,26 @@ def score(
     console.print(f"Framework: [bold]{framework}[/bold]")
     console.print(f"Risk Score: [bold {color}]{weighted_risk:.2f}%[/bold {color}]")
     console.print(f"Risk Level: [bold {color}]{level.upper()}[/bold {color}]")
+
+
+@app.command("init-assessment")
+def init_assessment(
+    output: str = typer.Option("assessment.json", help="Where to write starter assessment file."),
+) -> None:
+    """Create starter assessment.json for live dashboard data."""
+    template = {
+        "frameworks": {
+            "nist_csf": {"statuses": {}},
+            "iso27001": {"statuses": {}},
+            "soc2": {"statuses": {}},
+            "cis_v8": {"statuses": {}},
+        }
+    }
+
+    path = Path(output)
+    path.write_text(json.dumps(template, indent=2), encoding="utf-8")
+    console.print(f"[green]Created[/green] {path}")
+    console.print("Fill statuses with implemented|partial|missing and rerun dashboard.")
 
 
 if __name__ == "__main__":
