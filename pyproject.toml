@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyber-compliance-cli"
+version = "0.1.0"
+description = "Cybersecurity compliance CLI with beautiful TUI"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Lobby" }]
+dependencies = [
+  "typer>=0.12.0",
+  "rich>=13.7.0",
+  "textual>=0.70.0"
+]
+
+[project.scripts]
+cybersec = "cyber_compliance_cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cyber_compliance_cli*"]
