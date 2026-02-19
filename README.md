@@ -162,3 +162,6 @@ git push origin v0.1.1
 ```
 
 Tag push triggers GitHub Release + PyPI publish workflow.
+
+
+See `RELEASE_CHECKLIST.md` for first-release setup and tag-based release steps.
