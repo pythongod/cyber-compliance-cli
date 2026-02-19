@@ -8,6 +8,8 @@ from rich.console import Console
 from rich.table import Table
 
 from .editor import AssessmentEditorApp
+from .assessment_schema import validate_assessment
+from .diffing import compare_assessments
 from .io_csv import export_assessment_csv, import_assessment_csv
 from .reporting import write_markdown_report, write_pdf_report
 from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
@@ -175,6 +177,67 @@ def report(
         console.print("[red]format must be md or pdf[/red]")
         raise typer.Exit(code=1)
     console.print(f"[green]Report written[/green] {out}")
+
+
+
+
+@app.command("validate-assessment")
+def validate_assessment_cmd(
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+) -> None:
+    """Validate assessment schema and status values."""
+    path = Path(assessment_file)
+    if not path.exists():
+        console.print(f"[red]File not found:[/red] {assessment_file}")
+        raise typer.Exit(code=1)
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        console.print(f"[red]Invalid JSON:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    errors = validate_assessment(data)
+    if errors:
+        console.print("[red]Assessment invalid:[/red]")
+        for e in errors:
+            console.print(f" - {e}")
+        raise typer.Exit(code=1)
+
+    console.print("[green]Assessment schema valid[/green]")
+
+
+@app.command("diff")
+def diff_cmd(
+    old_file: str = typer.Option(..., help="Baseline assessment JSON."),
+    new_file: str = typer.Option(..., help="Current assessment JSON."),
+) -> None:
+    """Compare two assessments and show progress/regressions."""
+    p_old = Path(old_file)
+    p_new = Path(new_file)
+    if not p_old.exists() or not p_new.exists():
+        console.print("[red]Both --old-file and --new-file must exist[/red]")
+        raise typer.Exit(code=1)
+
+    old = json.loads(p_old.read_text(encoding="utf-8"))
+    new = json.loads(p_new.read_text(encoding="utf-8"))
+    out = compare_assessments(old, new)
+
+    console.print(f"Improved: [green]{len(out['improved'])}[/green]")
+    console.print(f"Regressed: [red]{len(out['regressed'])}[/red]")
+    console.print(f"Unchanged: {out['unchanged_count']}")
+
+    if out['improved']:
+        console.print("
+[green]Top improvements:[/green]")
+        for row in out['improved'][:10]:
+            console.print(f" - {row['framework']} | {row['control']} : {row['from']} -> {row['to']}")
+
+    if out['regressed']:
+        console.print("
+[red]Regressions:[/red]")
+        for row in out['regressed'][:10]:
+            console.print(f" - {row['framework']} | {row['control']} : {row['from']} -> {row['to']}")
 
 
 @app.command("init-assessment")

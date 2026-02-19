@@ -130,3 +130,11 @@ PDF report (optional `reportlab`):
 ```bash
 cybersec report --assessment-file assessment.json --format pdf --output compliance-report.pdf
 ```
+
+
+Validation + diff:
+
+```bash
+cybersec validate-assessment --assessment-file assessment.json
+cybersec diff --old-file baseline.json --new-file assessment.json
+```
