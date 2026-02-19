@@ -228,14 +228,12 @@ def diff_cmd(
     console.print(f"Unchanged: {out['unchanged_count']}")
 
     if out['improved']:
-        console.print("
-[green]Top improvements:[/green]")
+        console.print("\n[green]Top improvements:[/green]")
         for row in out['improved'][:10]:
             console.print(f" - {row['framework']} | {row['control']} : {row['from']} -> {row['to']}")
 
     if out['regressed']:
-        console.print("
-[red]Regressions:[/red]")
+        console.print("\n[red]Regressions:[/red]")
         for row in out['regressed'][:10]:
             console.print(f" - {row['framework']} | {row['control']} : {row['from']} -> {row['to']}")
 
