@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -66,24 +67,36 @@ def write_markdown_report(path: str | Path, data: Dict[str, Any]) -> Path:
 
 
 def write_pdf_report(path: str | Path, data: Dict[str, Any]) -> Path:
-    """Write simple PDF report. Requires reportlab; otherwise raises RuntimeError."""
+    """Write paginated PDF report. Requires reportlab; otherwise raises RuntimeError."""
     try:
         from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("PDF export requires optional dependency: reportlab") from exc
 
     out = Path(path)
     md = render_markdown_report(data)
-    c = canvas.Canvas(str(out), pagesize=A4)
-    width, height = A4
-    y = height - 40
+    doc = SimpleDocTemplate(str(out), pagesize=A4)
+    styles = getSampleStyleSheet()
+    normal = styles["BodyText"]
+    heading = styles["Heading3"]
+
+    story = []
     for raw in md.splitlines():
-        line = raw[:120]
-        c.drawString(40, y, line)
-        y -= 14
-        if y < 40:
-            c.showPage()
-            y = height - 40
-    c.save()
+        line = raw.strip()
+        if not line:
+            story.append(Spacer(1, 6))
+            continue
+        if line.startswith("#"):
+            txt = line.lstrip("#").strip()
+            story.append(Paragraph(txt, heading))
+            story.append(Spacer(1, 6))
+            continue
+
+        wrapped = textwrap.wrap(line, width=110) or [line]
+        for w in wrapped:
+            story.append(Paragraph(w.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"), normal))
+
+    doc.build(story)
     return out
