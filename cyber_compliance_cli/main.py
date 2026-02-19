@@ -12,7 +12,14 @@ from .assessment_schema import validate_assessment
 from .diffing import compare_assessments
 from .io_csv import export_assessment_csv, import_assessment_csv
 from .reporting import write_markdown_report, write_pdf_report
-from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
+from .mcp_client import (
+    MCPUnavailableError,
+    get_requirements,
+    list_requirement_frameworks,
+    load_assessment,
+    summarize_all,
+    summarize_framework,
+)
 from .tui import CyberComplianceApp
 from .data.framework_catalog import list_controls, list_frameworks
 
@@ -278,21 +285,38 @@ def export_bundle(
 def controls_cmd(
     framework: str = typer.Option(..., help="Framework key (e.g., nist_csf, pci_dss)."),
     query: str = typer.Option("", help="Optional search text."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
 ) -> None:
-    """Browse control requirements for a framework (NIST/PCI DSS supported)."""
-    all_fw = list_frameworks()
+    """Browse control requirements from MCP service (with local fallback)."""
     fw = framework.lower().strip()
-    if fw not in all_fw:
-        console.print(f"[red]Unsupported framework:[/red] {framework}")
-        console.print(f"Available: {', '.join(all_fw)}")
-        raise typer.Exit(code=1)
 
-    rows = list_controls(fw, query=query or None)
+    rows = []
+    all_fw = []
+    source = "mcp"
+    try:
+        all_fw = list_requirement_frameworks(transport=transport, server_command=server_command)
+        if fw not in all_fw:
+            console.print(f"[red]Unsupported framework:[/red] {framework}")
+            console.print(f"Available: {', '.join(all_fw)}")
+            raise typer.Exit(code=1)
+        out = get_requirements(fw, query=query, transport=transport, server_command=server_command)
+        rows = out.get("requirements", [])
+    except Exception:
+        # Local fallback for resilience
+        source = "local-fallback"
+        all_fw = list_frameworks()
+        if fw not in all_fw:
+            console.print(f"[red]Unsupported framework:[/red] {framework}")
+            console.print(f"Available: {', '.join(all_fw)}")
+            raise typer.Exit(code=1)
+        rows = list_controls(fw, query=query or None)
+
     if not rows:
         console.print("[yellow]No controls matched your query.[/yellow]")
         raise typer.Exit(code=0)
 
-    table = Table(title=f"{fw.upper()} Controls")
+    table = Table(title=f"{fw.upper()} Controls [{source}]")
     table.add_column("ID")
     table.add_column("Domain")
     table.add_column("Requirement")

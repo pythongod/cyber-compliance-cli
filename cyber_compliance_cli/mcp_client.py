@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import anyio
 
@@ -27,7 +27,6 @@ class MCPUnavailableError(RuntimeError):
 
 
 def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
-    """Enforce unified MCP envelope: {ok:bool, ...} / {ok:false,error:{...}}."""
     if not isinstance(result, dict):
         raise MCPUnavailableError(f"{context} returned non-object response")
 
@@ -45,7 +44,6 @@ def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
         payload.pop("ok", None)
         return payload
 
-    # Backward compatibility for old servers (no envelope)
     if "error" in result and isinstance(result.get("error"), dict):
         err = result["error"]
         code = err.get("code", "UNKNOWN_ERROR")
@@ -58,7 +56,6 @@ def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
 
 
 def _import_mcp_tools():
-    """Import MCP core functions directly (python transport)."""
     try:
         from cyber_compliance_mcp.core import (  # type: ignore
             calculate_risk_score,
@@ -83,7 +80,7 @@ def _import_mcp_tools():
             )
 
             return calculate_risk_score, generate_checklist, recommend_next_actions
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             raise MCPUnavailableError(f"Could not import MCP tools: {exc}") from exc
 
     raise MCPUnavailableError(
@@ -92,7 +89,6 @@ def _import_mcp_tools():
 
 
 async def _call_tool_stdio(server_command: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """Call an MCP tool over stdio transport and parse JSON text output."""
     from mcp import ClientSession
     from mcp.client.stdio import StdioServerParameters, stdio_client
 
@@ -115,10 +111,7 @@ async def _call_tool_stdio(server_command: str, tool_name: str, arguments: Dict[
             return _unwrap_result(parsed, tool_name)
 
 
-def _toolset(
-    transport: str = "python",
-    server_command: str = "cyber-compliance-mcp",
-):
+def _toolset(transport: str = "python", server_command: str = "cyber-compliance-mcp"):
     if transport == "python":
         calculate_risk_score, generate_checklist, recommend_next_actions = _import_mcp_tools()
 
@@ -140,20 +133,10 @@ def _toolset(
         return anyio.run(_call_tool_stdio, server_command, "calculate_risk_score", {"controls": controls})
 
     def _generate_checklist(framework: str, org_type: str = "saas") -> dict:
-        return anyio.run(
-            _call_tool_stdio,
-            server_command,
-            "generate_checklist",
-            {"framework": framework, "org_type": org_type},
-        )
+        return anyio.run(_call_tool_stdio, server_command, "generate_checklist", {"framework": framework, "org_type": org_type})
 
     def _recommend_next_actions(framework: str, gaps: List[str]) -> dict:
-        return anyio.run(
-            _call_tool_stdio,
-            server_command,
-            "recommend_next_actions",
-            {"framework": framework, "gaps": gaps},
-        )
+        return anyio.run(_call_tool_stdio, server_command, "recommend_next_actions", {"framework": framework, "gaps": gaps})
 
     return _calculate_risk_score, _generate_checklist, _recommend_next_actions
 
@@ -274,3 +257,58 @@ def summarize_all(
         "priority_actions": dedup_actions[:6],
         "assessment_path": assessment_path,
     }
+
+
+def get_requirements(
+    framework: str,
+    query: str = "",
+    transport: str = "python",
+    server_command: str = "cyber-compliance-mcp",
+) -> Dict[str, Any]:
+    """Get requirements from MCP service (primary source for catalogs)."""
+    fw = framework.lower().strip()
+    if transport == "stdio":
+        return anyio.run(
+            _call_tool_stdio,
+            server_command,
+            "get_requirements",
+            {"framework": fw, "query": query},
+        )
+
+    try:
+        from cyber_compliance_mcp.requirements import get_requirements as req_tool  # type: ignore
+    except Exception:
+        import sys
+
+        sibling = Path(__file__).resolve().parents[2] / "cyber-compliance-mcp"
+        if sibling.exists():
+            sys.path.insert(0, str(sibling))
+            from cyber_compliance_mcp.requirements import get_requirements as req_tool  # type: ignore
+        else:
+            raise MCPUnavailableError("MCP requirements tool unavailable")
+
+    return _unwrap_result(req_tool(fw, query), "get_requirements")
+
+
+def list_requirement_frameworks(
+    transport: str = "python",
+    server_command: str = "cyber-compliance-mcp",
+) -> List[str]:
+    if transport == "stdio":
+        out = anyio.run(_call_tool_stdio, server_command, "list_requirement_frameworks", {})
+        return out.get("frameworks", [])
+
+    try:
+        from cyber_compliance_mcp.requirements import list_requirement_frameworks as list_tool  # type: ignore
+    except Exception:
+        import sys
+
+        sibling = Path(__file__).resolve().parents[2] / "cyber-compliance-mcp"
+        if sibling.exists():
+            sys.path.insert(0, str(sibling))
+            from cyber_compliance_mcp.requirements import list_requirement_frameworks as list_tool  # type: ignore
+        else:
+            raise MCPUnavailableError("MCP requirements list tool unavailable")
+
+    out = _unwrap_result(list_tool(), "list_requirement_frameworks")
+    return out.get("frameworks", [])

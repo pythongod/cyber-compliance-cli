@@ -172,12 +172,12 @@ Tag push triggers GitHub Release + PyPI publish workflow.
 See `RELEASE_CHECKLIST.md` for first-release setup and tag-based release steps.
 
 
-Browse requirements (catalog mode):
+Browse requirements (MCP source + local fallback):
 
 ```bash
-cybersec controls --framework nist_csf
-cybersec controls --framework pci_dss
-cybersec controls --framework pci_dss --query cryptography
+cybersec controls --framework nist_csf --transport stdio
+cybersec controls --framework pci_dss --transport stdio
+cybersec controls --framework pci_dss --query cryptography --transport stdio
 ```
 
-Note: current catalog is curated starter coverage. We can expand to full official requirement libraries next.
+If MCP is unavailable, CLI automatically falls back to the local catalog.
