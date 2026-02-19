@@ -170,3 +170,14 @@ Tag push triggers GitHub Release + PyPI publish workflow.
 
 
 See `RELEASE_CHECKLIST.md` for first-release setup and tag-based release steps.
+
+
+Browse requirements (catalog mode):
+
+```bash
+cybersec controls --framework nist_csf
+cybersec controls --framework pci_dss
+cybersec controls --framework pci_dss --query cryptography
+```
+
+Note: current catalog is curated starter coverage. We can expand to full official requirement libraries next.

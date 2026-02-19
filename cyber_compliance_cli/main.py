@@ -14,6 +14,7 @@ from .io_csv import export_assessment_csv, import_assessment_csv
 from .reporting import write_markdown_report, write_pdf_report
 from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
 from .tui import CyberComplianceApp
+from .data.framework_catalog import list_controls, list_frameworks
 
 app = typer.Typer(help="Cyber security compliance CLI")
 console = Console()
@@ -269,6 +270,35 @@ def export_bundle(
     console.print(f" - CSV: {csv_path}")
     console.print(f" - MD:  {md_path}")
     console.print(f" - PDF: {pdf_msg}")
+
+
+
+
+@app.command("controls")
+def controls_cmd(
+    framework: str = typer.Option(..., help="Framework key (e.g., nist_csf, pci_dss)."),
+    query: str = typer.Option("", help="Optional search text."),
+) -> None:
+    """Browse control requirements for a framework (NIST/PCI DSS supported)."""
+    all_fw = list_frameworks()
+    fw = framework.lower().strip()
+    if fw not in all_fw:
+        console.print(f"[red]Unsupported framework:[/red] {framework}")
+        console.print(f"Available: {', '.join(all_fw)}")
+        raise typer.Exit(code=1)
+
+    rows = list_controls(fw, query=query or None)
+    if not rows:
+        console.print("[yellow]No controls matched your query.[/yellow]")
+        raise typer.Exit(code=0)
+
+    table = Table(title=f"{fw.upper()} Controls")
+    table.add_column("ID")
+    table.add_column("Domain")
+    table.add_column("Requirement")
+    for r in rows:
+        table.add_row(r["id"], r["domain"], r["title"])
+    console.print(table)
 
 
 @app.command("init-assessment")
