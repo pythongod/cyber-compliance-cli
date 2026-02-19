@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from .editor import AssessmentEditorApp
 from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
 from .tui import CyberComplianceApp
 
@@ -16,15 +17,19 @@ console = Console()
 
 @app.command()
 def dashboard(
-    assessment_file: str = typer.Option(
-        "assessment.json",
-        help="Path to assessment JSON (statuses per control).",
-    ),
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
     org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
 ) -> None:
-    """Launch beautiful TUI dashboard using live data from cyber-compliance-mcp."""
+    """Launch beautiful TUI dashboard using live data from MCP logic."""
     try:
-        data = summarize_all(assessment_file, org_type=org_type)
+        data = summarize_all(
+            assessment_file,
+            org_type=org_type,
+            transport=transport,
+            server_command=server_command,
+        )
     except MCPUnavailableError as exc:
         console.print(f"[red]MCP unavailable:[/red] {exc}")
         raise typer.Exit(code=2)
@@ -33,15 +38,43 @@ def dashboard(
 
 
 @app.command()
+def edit(
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+    org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
+) -> None:
+    """Interactive TUI editor to update control statuses."""
+    try:
+        AssessmentEditorApp(
+            assessment_file=assessment_file,
+            org_type=org_type,
+            transport=transport,
+            server_command=server_command,
+        ).run()
+    except MCPUnavailableError as exc:
+        console.print(f"[red]MCP unavailable:[/red] {exc}")
+        raise typer.Exit(code=2)
+
+
+@app.command()
 def checklist(
     framework: str = typer.Option(..., help="Framework: nist_csf|iso27001|soc2|cis_v8"),
     assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
     org_type: str = typer.Option("saas", help="Organization type."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
 ) -> None:
     """Print control checklist summary via MCP logic."""
     try:
         assessment = load_assessment(assessment_file)
-        summary = summarize_framework(framework.lower().strip(), assessment, org_type)
+        summary = summarize_framework(
+            framework.lower().strip(),
+            assessment,
+            org_type,
+            transport=transport,
+            server_command=server_command,
+        )
     except MCPUnavailableError as exc:
         console.print(f"[red]MCP unavailable:[/red] {exc}")
         raise typer.Exit(code=2)

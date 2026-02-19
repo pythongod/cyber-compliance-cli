@@ -5,9 +5,11 @@ A cybersecurity compliance CLI + beautiful terminal dashboard (TUI).
 ## Features
 
 - Interactive TUI dashboard (Textual)
+- Interactive TUI control status editor
 - Framework scorecards (NIST, ISO 27001, SOC 2, CIS)
 - Gap summaries and prioritized actions
 - Live scoring powered by `cyber-compliance-mcp` logic
+- Transport modes: `python` (direct import) and `stdio` (true MCP client/server)
 
 ## Install
 
@@ -32,16 +34,28 @@ Create starter assessment file:
 cybersec init-assessment
 ```
 
-Run live dashboard:
+Run live dashboard (python transport):
 
 ```bash
-cybersec dashboard --assessment-file assessment.json
+cybersec dashboard --assessment-file assessment.json --transport python
+```
+
+Run live dashboard (true MCP stdio transport):
+
+```bash
+cybersec dashboard --assessment-file assessment.json --transport stdio --server-command cyber-compliance-mcp
+```
+
+Open interactive status editor:
+
+```bash
+cybersec edit --assessment-file assessment.json --transport stdio
 ```
 
 Framework summary:
 
 ```bash
-cybersec checklist --framework iso27001 --assessment-file assessment.json
+cybersec checklist --framework iso27001 --assessment-file assessment.json --transport stdio
 ```
 
 Manual weighted score:
@@ -67,11 +81,6 @@ cybersec score --framework nist_csf --implemented 32 --partial 10 --missing 8
 
 Status values: `implemented`, `partial`, `missing`.
 
-## License
-
-MIT
-
-
 ## Quick dev
 
 ```bash
@@ -79,3 +88,7 @@ cp assessment.sample.json assessment.json
 make setup
 make test
 ```
+
+## License
+
+MIT

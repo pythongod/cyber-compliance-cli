@@ -1,4 +1,4 @@
-from cyber_compliance_cli.mcp_client import summarize_all
+from cyber_compliance_cli.mcp_client import set_control_status, summarize_all
 
 
 def test_summarize_all_has_frameworks():
@@ -10,3 +10,12 @@ def test_summarize_all_has_frameworks():
 def test_priority_actions_present():
     out = summarize_all(None)
     assert isinstance(out["priority_actions"], list)
+
+
+def test_set_control_status_updates_assessment():
+    assessment = {"frameworks": {}}
+    set_control_status(assessment, "nist_csf", "GV.OV-01 Governance strategy defined", "implemented")
+    assert (
+        assessment["frameworks"]["nist_csf"]["statuses"]["GV.OV-01 Governance strategy defined"]
+        == "implemented"
+    )
