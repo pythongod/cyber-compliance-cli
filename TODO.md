@@ -1,23 +1,16 @@
-# TODO (Updated)
+# TODO (Pruned)
 
 ## P0 — Next
 
-1. Add command to **validate assessment schema** with useful errors.
-2. Add `cybersec diff` to compare two assessments and show progress.
-3. Package release automation (version bump + changelog + GitHub release notes).
+1. Complete PyPI publishing setup in GitHub (trusted publishing environment + first tag release).
+2. Improve PDF report fidelity (tables, headings, page breaks, styling polish).
+3. Add richer TUI interactions (inline edit modal + control search/filter).
 
 ## P1 — Nice-to-have
 
-4. Improve PDF rendering quality (layout, pagination, tables).
-5. Add richer TUI interactions (inline edit modal, search/filter controls).
-6. Add deterministic integration test fixture for stdio transport in CI.
-7. Add export bundle command (CSV + MD + PDF in one run).
-
-## P2 — Distribution
-
-8. Publish to PyPI.
-9. Add signed release artifacts and provenance metadata.
+4. Add release-note quality gates (require changelog section for tagged release).
+5. Add optional packaged binaries (`pipx`/single-file launcher guidance).
 
 ## Backlog
 
-10. Add `cybersec plan` to generate 30/60/90 remediation plan from current gaps.
+6. Add `cybersec plan` to generate 30/60/90 remediation plan from current gaps.
