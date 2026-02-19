@@ -123,3 +123,10 @@ CLI maps common MCP error codes to actionable hints, for example:
 - `INVALID_FRAMEWORK` → suggests valid framework keys
 - `ASSESSMENT_NOT_FOUND` → suggests creating/fixing id
 - `INVALID_STATUS` → suggests valid status values
+
+
+PDF report (optional `reportlab`):
+
+```bash
+cybersec report --assessment-file assessment.json --format pdf --output compliance-report.pdf
+```

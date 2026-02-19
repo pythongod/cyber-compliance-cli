@@ -6,28 +6,13 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Footer, Header, Static
 
-from .mcp_client import (
-    SUPPORTED_FRAMEWORKS,
-    load_assessment,
-    save_assessment,
-    set_control_status,
-    summarize_all,
-)
+from .mcp_client import SUPPORTED_FRAMEWORKS, load_assessment, save_assessment, set_control_status, summarize_all
 
 
 class AssessmentEditorApp(App):
     CSS = """
-    Screen {
-        background: #0b1020;
-        color: #e2e8f0;
-    }
-
-    .panel {
-        border: round #334155;
-        background: #111827;
-        padding: 1 2;
-        margin: 1 2;
-    }
+    Screen { background: #0b1020; color: #e2e8f0; }
+    .panel { border: round #334155; background: #111827; padding: 1 2; margin: 1 2; }
     """
 
     BINDINGS = [
@@ -35,36 +20,23 @@ class AssessmentEditorApp(App):
         ("up", "up", "Up"),
         ("down", "down", "Down"),
         ("m", "next_framework", "Next framework"),
+        ("h", "help", "Help"),
         ("1", "set_implemented", "implemented"),
         ("2", "set_partial", "partial"),
         ("3", "set_missing", "missing"),
         ("s", "save", "Save"),
     ]
 
-    def __init__(
-        self,
-        assessment_file: str,
-        org_type: str = "saas",
-        transport: str = "python",
-        server_command: str = "cyber-compliance-mcp",
-        *args: Any,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, assessment_file: str, org_type: str = "saas", transport: str = "python", server_command: str = "cyber-compliance-mcp", *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.assessment_file = assessment_file
         self.org_type = org_type
         self.transport = transport
         self.server_command = server_command
-
         self.framework_idx = 0
         self.control_idx = 0
-
-        self.data = summarize_all(
-            self.assessment_file,
-            org_type=self.org_type,
-            transport=self.transport,
-            server_command=self.server_command,
-        )
+        self.show_help = False
+        self.data = summarize_all(self.assessment_file, org_type=self.org_type, transport=self.transport, server_command=self.server_command)
         self.assessment = load_assessment(self.assessment_file)
 
     def compose(self) -> ComposeResult:
@@ -72,10 +44,7 @@ class AssessmentEditorApp(App):
         with Vertical():
             yield Static("", id="header", classes="panel")
             yield Static("", id="controls", classes="panel")
-            yield Static(
-                "Keys: ↑/↓ move • m switch framework • 1/2/3 set status • s save • q quit",
-                classes="panel",
-            )
+            yield Static("", id="help", classes="panel")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -85,19 +54,27 @@ class AssessmentEditorApp(App):
         return SUPPORTED_FRAMEWORKS[self.framework_idx % len(SUPPORTED_FRAMEWORKS)]
 
     def _controls(self) -> List[Dict[str, str]]:
-        fw = self._current_framework()
-        return self.data.get("framework_details", {}).get(fw, [])
+        return self.data.get("framework_details", {}).get(self._current_framework(), [])
+
+    def _status_chip(self, status: str) -> str:
+        return {"implemented": "🟢", "partial": "🟡", "missing": "🔴"}.get(status, "⚪")
+
+    def _framework_tabs(self) -> str:
+        curr = self._current_framework()
+        tabs = []
+        for f in SUPPORTED_FRAMEWORKS:
+            tabs.append(f"[{f}]" if f == curr else f)
+        return " | ".join(tabs)
 
     def _render_all(self) -> None:
         fw = self._current_framework()
         summary = next((x for x in self.data.get("frameworks", []) if x.get("framework") == fw), {})
         self.query_one("#header", Static).update(
-            f"[b]Framework:[/b] {fw}    "
-            f"[b]Risk:[/b] {summary.get('risk_level', 'unknown').upper()} ({summary.get('risk_score', '?')}%)    "
-            f"[b]File:[/b] {self.assessment_file}"
+            f"[b]Tabs:[/b] {self._framework_tabs()}\n"
+            f"[b]Framework:[/b] {fw}    [b]Risk:[/b] {summary.get('risk_level', 'unknown').upper()} ({summary.get('risk_score', '?')}%)    [b]File:[/b] {self.assessment_file}"
         )
 
-        rows = []
+        rows: List[str] = []
         controls = self._controls()
         if not controls:
             rows.append("No controls loaded.")
@@ -105,9 +82,17 @@ class AssessmentEditorApp(App):
             self.control_idx = max(0, min(self.control_idx, len(controls) - 1))
             for idx, item in enumerate(controls):
                 mark = ">" if idx == self.control_idx else " "
-                rows.append(f"{mark} {item['status']:<11}  {item['control']}")
-
+                chip = self._status_chip(item['status'])
+                rows.append(f"{mark} {chip} {item['status']:<11}  {item['control']}")
         self.query_one("#controls", Static).update("\n".join(rows))
+
+        help_text = (
+            "Keys: ↑/↓ move • m switch framework • 1/2/3 set status • s save • h toggle help • q quit\n"
+            "Legend: 🟢 implemented  🟡 partial  🔴 missing"
+            if self.show_help
+            else "Press [h] for help"
+        )
+        self.query_one("#help", Static).update(help_text)
 
     def _set_status(self, status: str) -> None:
         controls = self._controls()
@@ -133,22 +118,16 @@ class AssessmentEditorApp(App):
         self.control_idx = 0
         self._render_all()
 
-    def action_set_implemented(self) -> None:
-        self._set_status("implemented")
+    def action_help(self) -> None:
+        self.show_help = not self.show_help
+        self._render_all()
 
-    def action_set_partial(self) -> None:
-        self._set_status("partial")
-
-    def action_set_missing(self) -> None:
-        self._set_status("missing")
+    def action_set_implemented(self) -> None: self._set_status("implemented")
+    def action_set_partial(self) -> None: self._set_status("partial")
+    def action_set_missing(self) -> None: self._set_status("missing")
 
     def action_save(self) -> None:
         save_assessment(self.assessment_file, self.assessment)
-        self.data = summarize_all(
-            self.assessment_file,
-            org_type=self.org_type,
-            transport=self.transport,
-            server_command=self.server_command,
-        )
+        self.data = summarize_all(self.assessment_file, org_type=self.org_type, transport=self.transport, server_command=self.server_command)
         self.notify("Saved assessment.json", timeout=1.5)
         self._render_all()

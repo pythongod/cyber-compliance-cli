@@ -42,3 +42,13 @@ def test_unwrap_result_error_has_hint():
         _unwrap_result({"ok": False, "error": {"code": "INVALID_FRAMEWORK", "message": "bad fw"}}, "ctx")
     assert "Hint:" in str(ex.value)
     assert "nist_csf" in str(ex.value)
+
+
+import shutil
+
+
+def test_stdio_transport_smoke():
+    if shutil.which("cyber-compliance-mcp") is None:
+        return
+    out = summarize_all(None, transport="stdio", server_command="cyber-compliance-mcp")
+    assert len(out["frameworks"]) == 4

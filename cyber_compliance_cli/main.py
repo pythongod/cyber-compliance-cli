@@ -9,7 +9,7 @@ from rich.table import Table
 
 from .editor import AssessmentEditorApp
 from .io_csv import export_assessment_csv, import_assessment_csv
-from .reporting import write_markdown_report
+from .reporting import write_markdown_report, write_pdf_report
 from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
 from .tui import CyberComplianceApp
 
@@ -81,9 +81,6 @@ def checklist(
         console.print(f"[red]MCP unavailable:[/red] {exc}")
         raise typer.Exit(code=2)
 
-    if summary.get("error"):
-        console.print(f"[red]{summary['error']}[/red]")
-        raise typer.Exit(code=1)
 
     table = Table(title=f"{framework.upper()} Compliance Summary")
     table.add_column("Metric")
@@ -157,13 +154,26 @@ def import_csv(
 def report(
     assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
     output: str = typer.Option("compliance-report.md", help="Report output file."),
+    format: str = typer.Option("md", help="Report format: md|pdf"),
     org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
     transport: str = typer.Option("python", help="Transport: python|stdio"),
     server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
 ) -> None:
-    """Generate Markdown compliance report."""
+    """Generate compliance report (Markdown/PDF)."""
     data = summarize_all(assessment_file, org_type=org_type, transport=transport, server_command=server_command)
-    out = write_markdown_report(output, data)
+    fmt = format.lower().strip()
+    if fmt == "md":
+        out = write_markdown_report(output, data)
+    elif fmt == "pdf":
+        try:
+            out = write_pdf_report(output, data)
+        except RuntimeError as exc:
+            console.print(f"[red]{exc}[/red]")
+            console.print("Install optional dependency: pip install reportlab")
+            raise typer.Exit(code=2)
+    else:
+        console.print("[red]format must be md or pdf[/red]")
+        raise typer.Exit(code=1)
     console.print(f"[green]Report written[/green] {out}")
 
 
