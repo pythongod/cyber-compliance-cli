@@ -238,6 +238,39 @@ def diff_cmd(
             console.print(f" - {row['framework']} | {row['control']} : {row['from']} -> {row['to']}")
 
 
+@app.command("export-bundle")
+def export_bundle(
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+    output_dir: str = typer.Option("bundle", help="Output directory."),
+    org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
+) -> None:
+    """Export CSV + Markdown (+PDF if available) into one folder."""
+    outdir = Path(output_dir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = outdir / "assessment.csv"
+    export_assessment_csv(assessment_file, str(csv_path))
+
+    data = summarize_all(assessment_file, org_type=org_type, transport=transport, server_command=server_command)
+    md_path = outdir / "compliance-report.md"
+    write_markdown_report(md_path, data)
+
+    pdf_msg = "(skipped)"
+    try:
+        pdf_path = outdir / "compliance-report.pdf"
+        write_pdf_report(pdf_path, data)
+        pdf_msg = str(pdf_path)
+    except RuntimeError:
+        pass
+
+    console.print(f"[green]Bundle exported[/green] {outdir}")
+    console.print(f" - CSV: {csv_path}")
+    console.print(f" - MD:  {md_path}")
+    console.print(f" - PDF: {pdf_msg}")
+
+
 @app.command("init-assessment")
 def init_assessment(
     output: str = typer.Option("assessment.json", help="Where to write starter assessment file."),

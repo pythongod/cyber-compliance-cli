@@ -138,3 +138,9 @@ Validation + diff:
 cybersec validate-assessment --assessment-file assessment.json
 cybersec diff --old-file baseline.json --new-file assessment.json
 ```
+
+Bundle export (CSV + MD + optional PDF):
+
+```bash
+cybersec export-bundle --assessment-file assessment.json --output-dir bundle --transport stdio
+```
