@@ -52,6 +52,11 @@ Open interactive status editor:
 cybersec edit --assessment-file assessment.json --transport stdio
 ```
 
+Editor tips:
+- Type in the filter box to search controls
+- Press `e` to toggle inline control detail modal
+- Press `1/2/3` to set status quickly
+
 Framework summary:
 
 ```bash
