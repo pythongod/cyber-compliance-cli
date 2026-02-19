@@ -1,15 +1,11 @@
-# TODO (Pruned)
+# TODO (Final Cleanup)
 
-## P0 — Next
+## Manual setup remaining
 
-1. Complete PyPI publishing setup in GitHub (trusted publishing environment + first tag release).
-2. Improve PDF report fidelity (tables, headings, page breaks, styling polish).
-
-## P1 — Nice-to-have
-
-3. Add release-note quality gates (require changelog section for tagged release).
-4. Add optional packaged binaries (`pipx`/single-file launcher guidance).
+1. Configure GitHub `pypi` environment protections for tag releases.
+2. Configure PyPI trusted publishing mapping for this repo/workflow.
+3. Run first tagged release (`vX.Y.Z`) and verify publish/sign workflows.
 
 ## Backlog
 
-5. Add `cybersec plan` to generate 30/60/90 remediation plan from current gaps.
+4. Add `cybersec plan` to generate 30/60/90 remediation plan from current gaps.
