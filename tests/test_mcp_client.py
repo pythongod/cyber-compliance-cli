@@ -34,3 +34,11 @@ def test_unwrap_result_ok_payload():
 def test_unwrap_result_error_raises():
     with pytest.raises(MCPUnavailableError):
         _unwrap_result({"ok": False, "error": {"code": "X", "message": "bad"}}, "ctx")
+
+
+def test_unwrap_result_error_has_hint():
+    import pytest
+    with pytest.raises(MCPUnavailableError) as ex:
+        _unwrap_result({"ok": False, "error": {"code": "INVALID_FRAMEWORK", "message": "bad fw"}}, "ctx")
+    assert "Hint:" in str(ex.value)
+    assert "nist_csf" in str(ex.value)

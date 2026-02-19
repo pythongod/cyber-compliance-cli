@@ -9,6 +9,18 @@ import anyio
 SUPPORTED_FRAMEWORKS = ["nist_csf", "iso27001", "soc2", "cis_v8"]
 VALID_STATUSES = {"implemented", "partial", "missing"}
 
+ERROR_HINTS = {
+    "INVALID_FRAMEWORK": "Use one of: nist_csf, iso27001, soc2, cis_v8.",
+    "INVALID_ORG_TYPE": "Provide a non-empty org type, e.g. saas, enterprise, fintech.",
+    "INVALID_CONTROLS": "Pass controls as a list of {control, status} objects.",
+    "INVALID_GAPS": "Pass gaps as a list of control names/strings.",
+    "INVALID_STATUS": "Use status values: implemented, partial, missing.",
+    "INVALID_ASSESSMENT_ID": "Use 2-64 chars matching [a-zA-Z0-9._:-].",
+    "INVALID_CONTROL": "Provide a non-empty control identifier/name.",
+    "ASSESSMENT_EXISTS": "Use a new assessment_id or fetch existing with get_assessment.",
+    "ASSESSMENT_NOT_FOUND": "Create it first or check the assessment_id typo.",
+}
+
 
 class MCPUnavailableError(RuntimeError):
     pass
@@ -24,7 +36,9 @@ def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
         err = result.get("error", {})
         code = err.get("code", "UNKNOWN_ERROR")
         message = err.get("message", "Unknown error")
-        raise MCPUnavailableError(f"{context} failed [{code}]: {message}")
+        hint = ERROR_HINTS.get(str(code), "")
+        suffix = f" Hint: {hint}" if hint else ""
+        raise MCPUnavailableError(f"{context} failed [{code}]: {message}{suffix}")
 
     if ok_flag is True:
         payload = dict(result)
@@ -36,7 +50,9 @@ def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
         err = result["error"]
         code = err.get("code", "UNKNOWN_ERROR")
         message = err.get("message", "Unknown error")
-        raise MCPUnavailableError(f"{context} failed [{code}]: {message}")
+        hint = ERROR_HINTS.get(str(code), "")
+        suffix = f" Hint: {hint}" if hint else ""
+        raise MCPUnavailableError(f"{context} failed [{code}]: {message}{suffix}")
 
     return result
 

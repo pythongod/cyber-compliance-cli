@@ -115,3 +115,11 @@ CLI now enforces MCP unified envelopes when available:
 - failure: `{"ok": false, "error": {"code", "message"}}`
 
 On failure, CLI exits with a clear mapped error message.
+
+
+### Friendly error hints
+
+CLI maps common MCP error codes to actionable hints, for example:
+- `INVALID_FRAMEWORK` → suggests valid framework keys
+- `ASSESSMENT_NOT_FOUND` → suggests creating/fixing id
+- `INVALID_STATUS` → suggests valid status values
