@@ -144,3 +144,21 @@ Bundle export (CSV + MD + optional PDF):
 ```bash
 cybersec export-bundle --assessment-file assessment.json --output-dir bundle --transport stdio
 ```
+
+
+## Release automation
+
+- Bump version + seed changelog entry:
+
+```bash
+python scripts/bump_version.py 0.1.1
+```
+
+- Create tag + push:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+Tag push triggers GitHub Release + PyPI publish workflow.
