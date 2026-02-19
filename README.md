@@ -168,6 +168,13 @@ git push origin v0.1.1
 
 Tag push triggers GitHub Release + PyPI publish workflow.
 
+## pipx usage (packaged CLI)
+
+```bash
+pipx install cyber-compliance-cli
+cybersec --help
+```
+
 
 See `RELEASE_CHECKLIST.md` for first-release setup and tag-based release steps.
 
