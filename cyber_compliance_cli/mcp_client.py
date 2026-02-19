@@ -14,6 +14,33 @@ class MCPUnavailableError(RuntimeError):
     pass
 
 
+def _unwrap_result(result: Dict[str, Any], context: str) -> Dict[str, Any]:
+    """Enforce unified MCP envelope: {ok:bool, ...} / {ok:false,error:{...}}."""
+    if not isinstance(result, dict):
+        raise MCPUnavailableError(f"{context} returned non-object response")
+
+    ok_flag = result.get("ok")
+    if ok_flag is False:
+        err = result.get("error", {})
+        code = err.get("code", "UNKNOWN_ERROR")
+        message = err.get("message", "Unknown error")
+        raise MCPUnavailableError(f"{context} failed [{code}]: {message}")
+
+    if ok_flag is True:
+        payload = dict(result)
+        payload.pop("ok", None)
+        return payload
+
+    # Backward compatibility for old servers (no envelope)
+    if "error" in result and isinstance(result.get("error"), dict):
+        err = result["error"]
+        code = err.get("code", "UNKNOWN_ERROR")
+        message = err.get("message", "Unknown error")
+        raise MCPUnavailableError(f"{context} failed [{code}]: {message}")
+
+    return result
+
+
 def _import_mcp_tools():
     """Import MCP core functions directly (python transport)."""
     try:
@@ -68,7 +95,8 @@ async def _call_tool_stdio(server_command: str, tool_name: str, arguments: Dict[
                 return {}
 
             text = content[0].get("text", "{}")
-            return json.loads(text)
+            parsed = json.loads(text)
+            return _unwrap_result(parsed, tool_name)
 
 
 def _toolset(
@@ -76,7 +104,18 @@ def _toolset(
     server_command: str = "cyber-compliance-mcp",
 ):
     if transport == "python":
-        return _import_mcp_tools()
+        calculate_risk_score, generate_checklist, recommend_next_actions = _import_mcp_tools()
+
+        def _calc(controls: List[dict]) -> dict:
+            return _unwrap_result(calculate_risk_score(controls), "calculate_risk_score")
+
+        def _check(framework: str, org_type: str = "saas") -> dict:
+            return _unwrap_result(generate_checklist(framework, org_type), "generate_checklist")
+
+        def _rec(framework: str, gaps: List[str]) -> dict:
+            return _unwrap_result(recommend_next_actions(framework, gaps), "recommend_next_actions")
+
+        return _calc, _check, _rec
 
     if transport != "stdio":
         raise MCPUnavailableError(f"Unsupported transport: {transport}")
@@ -147,19 +186,6 @@ def summarize_framework(
     calculate_risk_score, generate_checklist, recommend_next_actions = _toolset(transport, server_command)
 
     checklist_result = generate_checklist(framework=framework, org_type=org_type)
-    if checklist_result.get("error"):
-        return {
-            "framework": framework,
-            "error": checklist_result["error"],
-            "risk_score": 100.0,
-            "risk_level": "critical",
-            "missing": 0,
-            "partial": 0,
-            "implemented": 0,
-            "controls_total": 0,
-            "controls": [],
-        }
-
     checklist = checklist_result["checklist"]
     framework_assessment = assessment.get("frameworks", {}).get(framework, {})
     status_map = framework_assessment.get("statuses", {})

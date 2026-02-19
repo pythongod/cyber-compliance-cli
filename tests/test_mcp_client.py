@@ -19,3 +19,18 @@ def test_set_control_status_updates_assessment():
         assessment["frameworks"]["nist_csf"]["statuses"]["GV.OV-01 Governance strategy defined"]
         == "implemented"
     )
+
+
+import pytest
+from cyber_compliance_cli.mcp_client import _unwrap_result, MCPUnavailableError
+
+
+def test_unwrap_result_ok_payload():
+    out = _unwrap_result({"ok": True, "a": 1}, "ctx")
+    assert out["a"] == 1
+    assert "ok" not in out
+
+
+def test_unwrap_result_error_raises():
+    with pytest.raises(MCPUnavailableError):
+        _unwrap_result({"ok": False, "error": {"code": "X", "message": "bad"}}, "ctx")

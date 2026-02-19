@@ -106,3 +106,12 @@ Markdown report:
 ```bash
 cybersec report --assessment-file assessment.json --output compliance-report.md --transport stdio
 ```
+
+
+## Error handling behavior
+
+CLI now enforces MCP unified envelopes when available:
+- success: `{"ok": true, ...}`
+- failure: `{"ok": false, "error": {"code", "message"}}`
+
+On failure, CLI exits with a clear mapped error message.
