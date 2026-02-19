@@ -92,3 +92,17 @@ make test
 ## License
 
 MIT
+
+
+CSV import/export:
+
+```bash
+cybersec export-csv --assessment-file assessment.json --output-csv assessment.csv
+cybersec import-csv --input-csv assessment.csv --assessment-file assessment.json
+```
+
+Markdown report:
+
+```bash
+cybersec report --assessment-file assessment.json --output compliance-report.md --transport stdio
+```

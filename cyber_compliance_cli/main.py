@@ -8,6 +8,8 @@ from rich.console import Console
 from rich.table import Table
 
 from .editor import AssessmentEditorApp
+from .io_csv import export_assessment_csv, import_assessment_csv
+from .reporting import write_markdown_report
 from .mcp_client import MCPUnavailableError, load_assessment, summarize_all, summarize_framework
 from .tui import CyberComplianceApp
 
@@ -127,6 +129,42 @@ def score(
     console.print(f"Framework: [bold]{framework}[/bold]")
     console.print(f"Risk Score: [bold {color}]{weighted_risk:.2f}%[/bold {color}]")
     console.print(f"Risk Level: [bold {color}]{level.upper()}[/bold {color}]")
+
+
+
+
+@app.command()
+def export_csv(
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+    output_csv: str = typer.Option("assessment.csv", help="Output CSV path."),
+) -> None:
+    """Export assessment control statuses to CSV."""
+    out = export_assessment_csv(assessment_file, output_csv)
+    console.print(f"[green]Exported CSV[/green] {out}")
+
+
+@app.command()
+def import_csv(
+    input_csv: str = typer.Option(..., help="Input CSV path."),
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+) -> None:
+    """Import assessment control statuses from CSV."""
+    import_assessment_csv(input_csv, assessment_file)
+    console.print(f"[green]Imported CSV[/green] {input_csv} -> {assessment_file}")
+
+
+@app.command()
+def report(
+    assessment_file: str = typer.Option("assessment.json", help="Path to assessment JSON."),
+    output: str = typer.Option("compliance-report.md", help="Report output file."),
+    org_type: str = typer.Option("saas", help="Organization type for checklist generation."),
+    transport: str = typer.Option("python", help="Transport: python|stdio"),
+    server_command: str = typer.Option("cyber-compliance-mcp", help="MCP server command for stdio mode."),
+) -> None:
+    """Generate Markdown compliance report."""
+    data = summarize_all(assessment_file, org_type=org_type, transport=transport, server_command=server_command)
+    out = write_markdown_report(output, data)
+    console.print(f"[green]Report written[/green] {out}")
 
 
 @app.command("init-assessment")
